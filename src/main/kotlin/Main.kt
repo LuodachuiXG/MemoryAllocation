@@ -275,6 +275,7 @@ fun RightContent(
  * @param vm [MainViewModel]
  * @param currentAlgo 当前算法
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlgorithmContent(
     vm: MainViewModel,
@@ -290,14 +291,18 @@ fun AlgorithmContent(
             idleSize += it.size - it.used.value
         }
     }
-    val fragmentPercent = if (totalSize == 0) 0
-    else ((idleSize.toFloat() / totalSize.toFloat()) * 100).toInt()
+    // 计算内存总碎片路
+    val fragmentPercent = if (totalSize == 0) 0 else ((idleSize.toFloat() / totalSize.toFloat()) * 100).toInt()
 
     // 碎片化率数字动画
     val fragmentPercentAnimate by animateIntAsState(
         targetValue = fragmentPercent,
         animationSpec = tween()
     )
+
+
+    // 是否弹出初始化数量选择下拉菜单
+    var dropMenuExpanded by remember { mutableStateOf(false) }
 
     Column {
         Row {
@@ -317,23 +322,53 @@ fun AlgorithmContent(
         Row (
             modifier = Modifier.padding(top = 20.dp)
         ) {
-            OutlinedButton(
-                onClick = {
-                    // 分配 10 个大小从 50 到 200 的内存块
-                    val memoryBlocks = mutableListOf<MemoryBlock>()
-                    for (i in 1..10) {
-                        memoryBlocks.add(MemoryBlock(i, Random.nextInt(50, 200)))
-                    }
-                    // 初始化首次适应算法内存块
-                    when (currentAlgo) {
-                        FIRST_FIT -> vm.initMemory(FirstFitAlgorithm(memoryBlocks))
-                        BEST_FIT -> vm.initMemory(BestFitAlgorithm(memoryBlocks))
-                        WORST_FIT -> vm.initMemory(WorstFitAlgorithm(memoryBlocks))
+            // 下拉弹出菜单
+            ExposedDropdownMenuBox(
+                expanded = dropMenuExpanded,
+                onExpandedChange = {
+                    // 如果当前有进程正在加载就不弹出菜单
+                    if (!vm.isLoading.value) {
+                        dropMenuExpanded = it
                     }
                 },
-                enabled = !vm.isLoading.value
             ) {
-                Text("初始化内存")
+                OutlinedButton(
+                    onClick = {},
+                    enabled = !vm.isLoading.value,
+                    modifier = Modifier.menuAnchor()
+                ) {
+                    Text("初始化内存")
+                }
+
+                ExposedDropdownMenu(
+                    expanded = dropMenuExpanded,
+                    onDismissRequest = { dropMenuExpanded = false },
+                ) {
+                    // 内存块数量下拉菜单
+                    val memoryCountOption = listOf(5, 10, 15, 20)
+                    memoryCountOption.forEach {
+                        DropdownMenuItem(
+                            text = {
+                                Text("${it} 个内存块")
+                            },
+                            onClick = {
+                                // 分配指定数量个大小从 50 到 200 的内存块
+                                val memoryBlocks = mutableListOf<MemoryBlock>()
+                                for (i in 1..it) {
+                                    memoryBlocks.add(MemoryBlock(i, Random.nextInt(50, 200)))
+                                }
+                                // 初始化首次适应算法内存块
+                                when (currentAlgo) {
+                                    FIRST_FIT -> vm.initMemory(FirstFitAlgorithm(memoryBlocks))
+                                    BEST_FIT -> vm.initMemory(BestFitAlgorithm(memoryBlocks))
+                                    WORST_FIT -> vm.initMemory(WorstFitAlgorithm(memoryBlocks))
+                                }
+                                dropMenuExpanded = false
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                        )
+                    }
+                }
             }
 
             OutlinedButton(
@@ -370,7 +405,9 @@ fun AlgorithmContent(
         // 展示内存块
         if (vm.memoryBlocks.value.getMemory().isNotEmpty()) {
             Column (
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier
+                    .padding(top = 20.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 vm.memoryBlocks.value.getMemory().forEach {
                     MemoryBlockCard(it) { memoryBlock ->
