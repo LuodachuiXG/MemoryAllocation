@@ -29,7 +29,7 @@ fun MemoryBlockCard(
     onClick: (MemoryBlock) -> Unit
 ) {
     // 进度条动画持续时间
-    val progressAnimDuration = 400
+    val progressAnimDuration = 200
     // 进度条动画
     val progressAnimation by animateFloatAsState(
         targetValue = memoryBlock.used.value.toFloat() / memoryBlock.size.toFloat(),

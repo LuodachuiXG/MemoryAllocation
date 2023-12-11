@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -20,6 +21,7 @@ import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -97,9 +99,13 @@ fun LeftContent(
 ) {
     Column {
         // 算法选择卡片
-        AlgorithmOptionCard(viewModel) {
-            onAlgorithmChange(it)
-        }
+        AlgorithmOptionCard(
+            vm = viewModel,
+            // 算法选择更改事件
+            onAlgorithmChange = {
+                onAlgorithmChange(it)
+            }
+        )
 
         // 日志卡片
         LogCard(viewModel)
@@ -119,9 +125,13 @@ fun AlgorithmOptionCard(
     vm: MainViewModel,
     onAlgorithmChange: (AlgorithmsEnum) -> Unit
 ) {
+    // 是否弹出算法选择下拉菜单
     var dropMenuExpanded by remember { mutableStateOf(false) }
+    // 所有算法集合
     val algorithms = AlgorithmsEnum.values()
+    // 当前算法
     var currentAlgo by remember { mutableStateOf(FIRST_FIT) }
+
     Card (
         modifier = Modifier
             .fillMaxWidth()
@@ -427,7 +437,6 @@ class MainViewModel {
 
     // 日志内容
     val log = mutableStateListOf<MyLog>()
-
     /**
      * 清除 ViewModel 中变量数据
      */
@@ -441,7 +450,11 @@ class MainViewModel {
      * @param memoryAlgorithm 要分配算法内存块
      */
     fun initMemory(memoryAlgorithm: MemoryAlgorithm) {
-        addLog(MyLog("初始化内存"))
+        var totalMemorySize = 0
+        memoryAlgorithm.getMemory().forEach {
+            totalMemorySize += it.size
+        }
+        addLog(MyLog("初始化内存，总大小：$totalMemorySize"))
         _memoryBlocks.value = memoryAlgorithm
     }
 
@@ -450,10 +463,12 @@ class MainViewModel {
      */
     fun allocateMemory() {
         isLoading.value = true
+        var totalAllocateSize = 0
         coroutineScope.launch {
             // 如果内存块中还有未被占用的内存块就继续进行循环
             while (!_memoryBlocks.value.isAllOccupied()) {
                 val allocateSize = Random.nextInt(1, 200)
+                totalAllocateSize += allocateSize
                 val memoryBlock = _memoryBlocks.value.allocateMemory(allocateSize)
                 if (memoryBlock == null) {
                     addLog(MyLog("分配内存失败，空间不足。大小：$allocateSize", md_theme_dark_error))
@@ -462,9 +477,9 @@ class MainViewModel {
                     val fragmentPercent = (((memoryBlock.size - memoryBlock.used.value) / memoryBlock.size.toFloat()) * 100).toInt()
                     addLog(MyLog("分配内存大小：$allocateSize，碎片化率：$fragmentPercent%"))
                 }
-                delay(200)
+                delay(50)
             }
-            addLog(MyLog("内存分配完成", Color.Green))
+            addLog(MyLog("内存分配完成，总分配大小：$totalAllocateSize", Color.Green))
             isLoading.value = false
         }
     }
@@ -490,7 +505,7 @@ class MainViewModel {
                         (if (compactionOption == CompactionOption.START) "上" else "下") + "紧凑"))
                 count++
                 _memoryBlocks.value.compaction(compactionOption)
-                delay(200)
+                delay(100)
             }
             addLog(MyLog("紧凑完成", Color.Green))
             isLoading.value = false
