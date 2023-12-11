@@ -349,7 +349,7 @@ fun AlgorithmContent(
                     memoryCountOption.forEach {
                         DropdownMenuItem(
                             text = {
-                                Text("${it} 个内存块")
+                                Text("$it 个内存块")
                             },
                             onClick = {
                                 // 分配指定数量个大小从 50 到 200 的内存块
@@ -505,7 +505,6 @@ class MainViewModel {
             // 如果内存块中还有未被占用的内存块就继续进行循环
             while (!_memoryBlocks.value.isAllOccupied()) {
                 val allocateSize = Random.nextInt(1, 200)
-                totalAllocateSize += allocateSize
                 val memoryBlock = _memoryBlocks.value.allocateMemory(allocateSize)
                 if (memoryBlock == null) {
                     addLog(MyLog("分配内存失败，空间不足。大小：$allocateSize", md_theme_dark_error))
@@ -513,6 +512,7 @@ class MainViewModel {
                     // 计算当前分配的内存的碎片化率
                     val fragmentPercent = (((memoryBlock.size - memoryBlock.used.value) / memoryBlock.size.toFloat()) * 100).toInt()
                     addLog(MyLog("分配内存大小：$allocateSize，碎片化率：$fragmentPercent%"))
+                    totalAllocateSize += allocateSize
                 }
                 delay(50)
             }
