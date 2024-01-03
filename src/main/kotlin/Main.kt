@@ -1,15 +1,12 @@
 import algorithm.*
 import algorithm.AlgorithmsEnum.*
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -17,31 +14,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
-import com.sun.tools.javac.Main
 import data.model.MemoryBlock
 import data.model.MyLog
-import javafx.scene.paint.Material
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import tool.checkStartWith
 import ui.component.MemoryBlockCard
 import ui.theme.darkColors
 import ui.theme.md_theme_dark_background
 import ui.theme.md_theme_dark_error
-import ui.theme.md_theme_dark_primary
 import kotlin.random.Random
 import kotlin.system.exitProcess
 
@@ -61,13 +50,13 @@ fun AppContent(
     var currentAlgo by remember {
         mutableStateOf(FIRST_FIT)
     }
-    Row (
+    Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 10.dp)
             .padding(bottom = 10.dp)
     ) {
-        Column (
+        Column(
             modifier = Modifier.weight(2f)
         ) {
             LeftContent(viewModel) {
@@ -78,7 +67,7 @@ fun AppContent(
             }
         }
 
-        Column (
+        Column(
             modifier = Modifier.weight(3f)
         ) {
             RightContent(currentAlgo, viewModel)
@@ -132,13 +121,13 @@ fun AlgorithmOptionCard(
     // 当前算法
     var currentAlgo by remember { mutableStateOf(FIRST_FIT) }
 
-    Card (
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp)
             .clip(CardDefaults.shape)
     ) {
-        Column (
+        Column(
             modifier = Modifier.padding(20.dp)
         ) {
             Text(
@@ -155,7 +144,7 @@ fun AlgorithmOptionCard(
                 },
                 modifier = Modifier.padding(top = 20.dp)
             ) {
-                ElevatedButton (
+                ElevatedButton(
                     enabled = !vm.isLoading.value,
                     onClick = {
                         // 如果当前有进程正在加载就不弹出菜单
@@ -209,12 +198,12 @@ fun LogCard(
 
 
 
-    Card (
+    Card(
         modifier = Modifier
             .padding(10.dp)
             .fillMaxWidth()
     ) {
-        Column (
+        Column(
             modifier = Modifier
                 .padding(20.dp)
         ) {
@@ -224,13 +213,13 @@ fun LogCard(
             )
 
             // 展示日志
-            Column (
+            Column(
                 modifier = Modifier
                     .padding(top = 10.dp)
                     .verticalScroll(logScrollState)
             ) {
                 vm.log.forEach { log ->
-                    Row (
+                    Row(
                         modifier = Modifier.padding(vertical = 5.dp)
                     ) {
                         Text(
@@ -255,13 +244,13 @@ fun RightContent(
     currentAlgo: AlgorithmsEnum,
     vm: MainViewModel
 ) {
-    Card (
+    Card(
         modifier = Modifier
             .fillMaxSize()
             .padding(10.dp)
             .clip(CardDefaults.shape)
     ) {
-        Column (
+        Column(
             modifier = Modifier.padding(20.dp)
         ) {
             AlgorithmContent(vm, currentAlgo)
@@ -281,28 +270,11 @@ fun AlgorithmContent(
     vm: MainViewModel,
     currentAlgo: AlgorithmsEnum
 ) {
-    // 计算内存碎片率
-    var totalSize = 0
-    var idleSize = 0
-    vm.memoryBlocks.value.getMemory().forEach {
-        // 只计算已经占用的内存块
-        if (it.isOccupied()) {
-            totalSize += it.size
-            idleSize += it.size - it.used.value
-        }
-    }
-    // 计算内存总碎片路
-    val fragmentPercent = if (totalSize == 0) 0 else ((idleSize.toFloat() / totalSize.toFloat()) * 100).toInt()
-
-    // 碎片化率数字动画
-    val fragmentPercentAnimate by animateIntAsState(
-        targetValue = fragmentPercent,
-        animationSpec = tween()
-    )
-
-
     // 是否弹出初始化数量选择下拉菜单
     var dropMenuExpanded by remember { mutableStateOf(false) }
+
+    // 可分配的内存大小选择下拉菜单
+    val memorySizeOption = listOf(500, 700, 1000, 1500, 2000)
 
     Column {
         Row {
@@ -310,16 +282,9 @@ fun AlgorithmContent(
                 text = currentAlgo.algoName,
                 style = MaterialTheme.typography.titleLarge
             )
-            Text(
-                text = "总碎片率：$fragmentPercentAnimate%",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .align(Alignment.Bottom)
-                    .padding(start = 10.dp)
-            )
         }
 
-        Row (
+        Row(
             modifier = Modifier.padding(top = 20.dp)
         ) {
             // 下拉弹出菜单
@@ -344,20 +309,16 @@ fun AlgorithmContent(
                     expanded = dropMenuExpanded,
                     onDismissRequest = { dropMenuExpanded = false },
                 ) {
-                    // 内存块数量下拉菜单
-                    val memoryCountOption = listOf(5, 10, 15, 20)
-                    memoryCountOption.forEach {
+                    memorySizeOption.forEach { size ->
                         DropdownMenuItem(
                             text = {
-                                Text("$it 个内存块")
+                                Text(size.toString())
                             },
                             onClick = {
-                                // 分配指定数量个大小从 50 到 200 的内存块
-                                val memoryBlocks = mutableListOf<MemoryBlock>()
-                                for (i in 1..it) {
-                                    memoryBlocks.add(MemoryBlock(i, Random.nextInt(50, 200)))
-                                }
-                                // 初始化首次适应算法内存块
+                                // 分配一个指定大小的内存块
+                                val memoryBlocks = mutableStateListOf(MemoryBlock(addr = 0, size = size))
+
+                                // 根据不同算法初始化内存块
                                 when (currentAlgo) {
                                     FIRST_FIT -> vm.initMemory(FirstFitAlgorithm(memoryBlocks))
                                     BEST_FIT -> vm.initMemory(BestFitAlgorithm(memoryBlocks))
@@ -378,7 +339,7 @@ fun AlgorithmContent(
                 modifier = Modifier.padding(start = 10.dp),
                 enabled = !vm.isLoading.value
             ) {
-                Text("分配内存")
+                Text("装入作业")
             }
 
             OutlinedButton(
@@ -403,16 +364,17 @@ fun AlgorithmContent(
         }
 
         // 展示内存块
-        if (vm.memoryBlocks.value.getMemory().isNotEmpty()) {
-            Column (
+        if (vm.algorithm.value.getMemory().isNotEmpty()) {
+            Column(
                 modifier = Modifier
                     .padding(top = 20.dp)
                     .verticalScroll(rememberScrollState())
+                    .animateContentSize()
             ) {
-                vm.memoryBlocks.value.getMemory().forEach {
-                    MemoryBlockCard(it) { memoryBlock ->
+                vm.algorithm.value.getMemory().forEachIndexed { index, memory ->
+                    MemoryBlockCard(memory) { memoryBlock ->
                         // 内存块卡片点击事件
-                        vm.deallocateMemory(memoryBlock)
+                        vm.deallocateMemory(index, memoryBlock)
                     }
                 }
             }
@@ -426,7 +388,7 @@ fun AlgorithmContent(
  */
 @Composable
 fun AppBar() {
-    Row (
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(md_theme_dark_background)
@@ -437,7 +399,7 @@ fun AppBar() {
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
         )
 
-        Row (
+        Row(
             horizontalArrangement = Arrangement.End,
             modifier = Modifier
                 .fillMaxWidth()
@@ -468,17 +430,18 @@ class MainViewModel {
     // 标记当前是否有协程正在进行操作
     var isLoading = mutableStateOf(false)
 
-    // 算法内存块
-    private val _memoryBlocks = mutableStateOf<MemoryAlgorithm>(FirstFitAlgorithm())
-    val memoryBlocks: State<MemoryAlgorithm> = _memoryBlocks
+    // 当前算法算法
+    private val _algorithm = mutableStateOf<MemoryAlgorithm>(FirstFitAlgorithm())
+    val algorithm: State<MemoryAlgorithm> = _algorithm
 
     // 日志内容
     val log = mutableStateListOf<MyLog>()
+
     /**
      * 清除 ViewModel 中变量数据
      */
     fun clearData() {
-        _memoryBlocks.value = FirstFitAlgorithm()
+        _algorithm.value = FirstFitAlgorithm()
         log.clear()
     }
 
@@ -492,42 +455,56 @@ class MainViewModel {
             totalMemorySize += it.size
         }
         addLog(MyLog("初始化内存，总大小：$totalMemorySize"))
-        _memoryBlocks.value = memoryAlgorithm
+        _algorithm.value = memoryAlgorithm
     }
 
     /**
-     * 分配内存
+     * 动态分配内存
      */
     fun allocateMemory() {
-        isLoading.value = true
-        var totalAllocateSize = 0
-        coroutineScope.launch {
-            // 如果内存块中还有未被占用的内存块就继续进行循环
-            while (!_memoryBlocks.value.isAllOccupied()) {
-                val allocateSize = Random.nextInt(1, 200)
-                val memoryBlock = _memoryBlocks.value.allocateMemory(allocateSize)
-                if (memoryBlock == null) {
-                    addLog(MyLog("分配内存失败，空间不足。大小：$allocateSize", md_theme_dark_error))
-                } else {
-                    // 计算当前分配的内存的碎片化率
-                    val fragmentPercent = (((memoryBlock.size - memoryBlock.used.value) / memoryBlock.size.toFloat()) * 100).toInt()
-                    addLog(MyLog("分配内存大小：$allocateSize，碎片化率：$fragmentPercent%"))
-                    totalAllocateSize += allocateSize
+        // 随机一个分配大小
+        val allocateSize = Random.nextInt(50, 300)
+        // 尝试分配内存
+        val allocated = _algorithm.value.allocateMemory(allocateSize)
+        // 分配的内存块
+        val allocateMemoryBlock = allocated.data
+        // 分配的内存块在内存中的索引
+        val allocateIndex = allocated.index
+        if (allocateMemoryBlock == null) {
+            addLog(MyLog("分配内存失败，空间不足。大小：$allocateSize", md_theme_dark_error))
+        } else {
+            // 成功分配到内存
+            // 从分配的内存块中去除当前大小作为一个单独的内存分区
+            val memoryBlocks = _algorithm.value.getMemory()
+            // 从旧的内存分区中分出新的内存块，因为从前插入，所以这里内存块地址直接设为分配的内存的地址
+            val newMemoryBlock =
+                MemoryBlock(addr = allocateMemoryBlock.addr, size = allocateSize).apply {
+                    occupy()
                 }
-                delay(50)
-            }
-            addLog(MyLog("内存分配完成，总分配大小：$totalAllocateSize", Color.Green))
-            isLoading.value = false
+            // 重新修改被分割的内存块的大小和地址
+            allocateMemoryBlock.size -= allocateSize
+            allocateMemoryBlock.addr = newMemoryBlock.addr + newMemoryBlock.size
+
+            // 插入分割出来的内存块，插入到被分割的内存块前
+            memoryBlocks.add(allocateIndex, newMemoryBlock)
+
+            // 计算当前分配的内存的碎片化率
+            addLog(MyLog("装入作业：($allocateSize) -> 块地址 ${newMemoryBlock.addr}"))
         }
     }
 
     /**
-     * 释放内存块
+     * 释放内存块，有下面四种情况：
+     * 1.回收区与插入点的前一个分区相邻接，两分区合并。
+     * 2.回收区与插入点的后一个分区相邻接 ，两分区合并。
+     * 3.回收区同时与插入点的前、后两个分区邻接 ，三分区合并。
+     * 4.回收区与插入点前、后两个分区都不相邻 ，单独一个分区。
+     * 简单理解：有相邻则合并，无相邻则单独为一个分区
      * @param memoryBlock 要释放的内存块 [MemoryBlock]
+     * @param index 要释放的内存块的索引
      */
-    fun deallocateMemory(memoryBlock: MemoryBlock) {
-        addLog(MyLog("释放内存 ID：${memoryBlock.id}"))
-        _memoryBlocks.value.deallocateMemory(memoryBlock)
+    fun deallocateMemory(index: Int, memoryBlock: MemoryBlock) {
+        memoryBlock.unOccupy()
     }
 
     /**
@@ -537,12 +514,16 @@ class MainViewModel {
         isLoading.value = true
         coroutineScope.launch {
             var count = 1
-            while (_memoryBlocks.value.canCompaction(compactionOption)) {
-                addLog(MyLog("第 $count 次" +
-                        (if (compactionOption == CompactionOption.START) "上" else "下") + "紧凑"))
+            while (_algorithm.value.canCompaction(compactionOption)) {
+                addLog(
+                    MyLog(
+                        "第 $count 次" +
+                                (if (compactionOption == CompactionOption.START) "上" else "下") + "紧凑"
+                    )
+                )
                 count++
-                _memoryBlocks.value.compaction(compactionOption)
-                delay(100)
+                _algorithm.value.compaction(compactionOption)
+                delay(30)
             }
             addLog(MyLog("紧凑完成", Color.Green))
             isLoading.value = false
@@ -559,8 +540,6 @@ class MainViewModel {
 }
 
 
-
-
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
@@ -569,7 +548,7 @@ fun main() = application {
             size = DpSize(900.dp, 650.dp)
         )
     ) {
-        MaterialTheme (
+        MaterialTheme(
             colorScheme = darkColors
         ) {
             Column {

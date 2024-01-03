@@ -1,42 +1,43 @@
 package algorithm
 
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import data.model.IndexWithData
 import data.model.MemoryBlock
-import kotlin.math.max
+import java.util.*
 
 /**
  * 最坏适应算法
  */
 class WorstFitAlgorithm(
-    private val memory: MutableList<MemoryBlock> = mutableStateListOf()
+    private val memory: SnapshotStateList<MemoryBlock> = mutableStateListOf()
 ): FirstFitAlgorithm(memory) {
     /**
-     * 尝试分配内存
-     * 分配与实际申请大小差距最大的内存块
+     * 分配内存
      * @param size 分配大小
-     * @return 如果没有合适的内存块就返回 null
+     * @return 返回内存块以及所在的索引位置
      */
-    override  fun allocateMemory(size: Int): MemoryBlock? {
+    override  fun allocateMemory(size: Int): IndexWithData<MemoryBlock> {
         var maxBlock: MemoryBlock? = null
-        for (block in memory) {
+        var maxIndex: Int = -1
+
+        memory.forEachIndexed { index, block ->
             // 判断当前块是否没有被占用，并且当前块大小可以容下申请的大小
-            if (!block.isOccupied() && (block.size - block.used.value) >= size) {
+            if (!block.isOccupied() && block.size >= size) {
                 // 找到适合的并且大小差距最大的内存块
-                if (maxBlock == null || (maxBlock.size - size) < (block.size - size)) {
+                if (maxBlock == null || (maxBlock!!.size - size) < (block.size - size)) {
                     maxBlock = block
-                    continue
+                    maxIndex = index
                 }
             }
         }
 
-        if (maxBlock == null) {
+        return if (maxBlock == null) {
             // 没有找到合适内存块
-            return null
+            IndexWithData()
         } else {
             // 找到了第一个合适的空闲块
-            // 更新内存块大小
-            maxBlock.used.value += size
-            return maxBlock
+            IndexWithData(maxIndex, maxBlock)
         }
     }
 }

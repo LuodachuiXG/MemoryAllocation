@@ -5,28 +5,33 @@ import androidx.compose.runtime.mutableStateOf
 
 /**
  * 内存块
- * @param id 块 ID
+ * @param addr 块地址
  * @param size 块大小
- * @param used 已使用大小
  */
 data class MemoryBlock(
-    val id: Int,
-    val size: Int,
-    var used: MutableState<Int> = mutableStateOf(0),
+    var addr: Int,
+    var size: Int,
+    private var occupied: MutableState<Boolean> = mutableStateOf(false)
 ) {
     /**
      * 当前内存块是否已经被占用
      * @return 已经占用就返回 true
      */
     fun isOccupied(): Boolean {
-        return used.value != 0
+        return occupied.value
     }
 
     /**
-     * 当前内存块空间是否已满
-     * @return 满了返回 true
+     * 使当前块为占用状态
      */
-    fun isFull(): Boolean {
-        return used.value >= size
+    fun occupy() {
+        occupied.value = true
+    }
+
+    /**
+     * 使当前块为未占用状态
+     */
+    fun unOccupy() {
+        occupied.value = false
     }
 }

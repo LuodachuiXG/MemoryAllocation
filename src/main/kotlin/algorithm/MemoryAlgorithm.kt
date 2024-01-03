@@ -1,5 +1,6 @@
 package algorithm
 
+import data.model.IndexWithData
 import data.model.MemoryBlock
 
 /**
@@ -9,21 +10,37 @@ interface MemoryAlgorithm {
     /**
      * 分配内存
      * @param size 分配大小
-     * @return 如果没有合适的内存块就返回 null
+     * @return 返回内存块以及所在的索引位置
      */
-    fun allocateMemory(size: Int): MemoryBlock?
+    fun allocateMemory(size: Int): IndexWithData<MemoryBlock>
 
     /**
-     * 释放内存块
-     * @param block 要释放的内存块
+     * 删除内存块
+     * @param index 要删除的内存块索引
      */
-    fun deallocateMemory(block: MemoryBlock)
+    fun delMemory(index: Int)
+
+    /**
+     * 重新设置内存块大小
+     */
+    fun reSizeMemory(index: Int, newSize: Int)
+
+    /**
+     * 获取内存块
+     * @param index 索引
+     */
+    fun memoryAt(index: Int): MemoryBlock?
 
     /**
      * 返回内存
      * @return 返回内存块（ArrayList）
      */
     fun getMemory(): MutableList<MemoryBlock>
+
+    /**
+     * 内存块大小
+     */
+    fun size(): Int
 
 
     /**

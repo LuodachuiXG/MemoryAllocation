@@ -4,17 +4,15 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import data.model.MemoryBlock
 
@@ -32,21 +30,13 @@ fun MemoryBlockCard(
     val progressAnimDuration = 200
     // 进度条动画
     val progressAnimation by animateFloatAsState(
-        targetValue = memoryBlock.used.value.toFloat() / memoryBlock.size.toFloat(),
+        targetValue = if (memoryBlock.isOccupied()) 1f else 0f,
         animationSpec = tween(
             durationMillis = progressAnimDuration,
             easing = FastOutSlowInEasing
         )
     )
 
-    // 已使用大小加载动画
-    val usedSizeAnimation by animateIntAsState(
-        targetValue = memoryBlock.used.value,
-        animationSpec = tween(
-            durationMillis = progressAnimDuration,
-            easing = FastOutSlowInEasing
-        )
-    )
     Box (
         modifier = Modifier
             .padding(bottom = 10.dp)
@@ -63,8 +53,9 @@ fun MemoryBlockCard(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.padding(horizontal = 10.dp)
         ) {
+            // 块起始地址
             Text(
-                text = memoryBlock.id.toString(),
+                text = memoryBlock.addr.toString(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.White,
                 modifier = Modifier.weight(1f)
@@ -74,8 +65,9 @@ fun MemoryBlockCard(
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.weight(1f)
             ) {
+                // 块大小
                 Text(
-                    text = "$usedSizeAnimation / ${memoryBlock.size}",
+                    text = "Size: ${memoryBlock.size}",
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White
                 )
@@ -85,8 +77,9 @@ fun MemoryBlockCard(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier.weight(1f)
             ) {
+                // 块尾地址
                 Text(
-                    text = "${(progressAnimation * 100).toInt()}%",
+                    text = (memoryBlock.addr + memoryBlock.size - 1).toString(),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White
                 )
