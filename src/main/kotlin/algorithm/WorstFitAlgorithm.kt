@@ -11,13 +11,13 @@ import java.util.*
  */
 class WorstFitAlgorithm(
     private val memory: SnapshotStateList<MemoryBlock> = mutableStateListOf()
-): FirstFitAlgorithm(memory) {
+) : FirstFitAlgorithm(memory) {
     /**
      * 分配内存
      * @param size 分配大小
      * @return 返回内存块以及所在的索引位置
      */
-    override  fun allocateMemory(size: Int): IndexWithData<MemoryBlock> {
+    override fun allocateMemory(size: Int): IndexWithData<MemoryBlock> {
         var maxBlock: MemoryBlock? = null
         var maxIndex: Int = -1
 

@@ -37,7 +37,7 @@ fun MemoryBlockCard(
         )
     )
 
-    Box (
+    Box(
         modifier = Modifier
             .padding(bottom = 10.dp)
             .clip(CardDefaults.shape)
@@ -49,19 +49,19 @@ fun MemoryBlockCard(
             progress = progressAnimation,
             modifier = Modifier.height(28.dp).fillMaxWidth()
         )
-        Row (
+        Row(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.padding(horizontal = 10.dp)
         ) {
             // 块起始地址
             Text(
-                text = memoryBlock.addr.toString(),
+                text = "#${memoryBlock.addr}",
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.White,
                 modifier = Modifier.weight(1f)
             )
 
-            Row (
+            Row(
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.weight(1f)
             ) {
@@ -73,13 +73,13 @@ fun MemoryBlockCard(
                 )
             }
 
-            Row (
+            Row(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier.weight(1f)
             ) {
                 // 块尾地址
                 Text(
-                    text = (memoryBlock.addr + memoryBlock.size - 1).toString(),
+                    text = "#${memoryBlock.addr + memoryBlock.size - 1}",
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White
                 )

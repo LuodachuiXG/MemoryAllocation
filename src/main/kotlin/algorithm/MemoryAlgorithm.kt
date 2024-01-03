@@ -45,30 +45,18 @@ interface MemoryAlgorithm {
 
     /**
      * 紧凑算法，使内存往一侧紧凑
-     * @param compaction 紧凑选项，向前 / 向后紧凑 [CompactionOption]
      */
-    fun compaction(compaction: CompactionOption)
+    fun compaction()
 
     /**
      * 判断当前内存款是否还可以进行紧凑操作
-     * @param compaction 紧凑选项，向前 / 向后紧凑 [CompactionOption]
      * @return 如果还可以紧凑，就返回 true
      */
-    fun canCompaction(compaction: CompactionOption): Boolean
+    fun canCompaction(): Boolean
 
     /**
      * 是否所有内存块都被占用
      * @return 所有内存块被占用返回 true
      */
     fun isAllOccupied(): Boolean
-}
-
-/**
- * 紧凑选项
- */
-enum class CompactionOption {
-    // 前紧凑
-    START,
-    // 后紧凑
-    END
 }

@@ -26,6 +26,7 @@ import data.model.MyLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import ui.component.MemoryBlockCard
 import ui.theme.darkColors
@@ -344,22 +345,12 @@ fun AlgorithmContent(
 
             OutlinedButton(
                 onClick = {
-                    vm.compaction(CompactionOption.START)
+                    vm.compaction()
                 },
                 modifier = Modifier.padding(start = 10.dp),
                 enabled = !vm.isLoading.value
             ) {
-                Text("上紧凑")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    vm.compaction(CompactionOption.END)
-                },
-                modifier = Modifier.padding(start = 10.dp),
-                enabled = !vm.isLoading.value
-            ) {
-                Text("下紧凑")
+                Text("紧凑")
             }
         }
 
@@ -471,16 +462,14 @@ class MainViewModel {
         // 分配的内存块在内存中的索引
         val allocateIndex = allocated.index
         if (allocateMemoryBlock == null) {
-            addLog(MyLog("分配内存失败，空间不足。大小：$allocateSize", md_theme_dark_error))
+            addLog(MyLog("分配内存失败，空间不足。大小：$allocateSize", Color.Red))
         } else {
             // 成功分配到内存
             // 从分配的内存块中去除当前大小作为一个单独的内存分区
             val memoryBlocks = _algorithm.value.getMemory()
             // 从旧的内存分区中分出新的内存块，因为从前插入，所以这里内存块地址直接设为分配的内存的地址
-            val newMemoryBlock =
-                MemoryBlock(addr = allocateMemoryBlock.addr, size = allocateSize).apply {
-                    occupy()
-                }
+            val newMemoryBlock = MemoryBlock(addr = allocateMemoryBlock.addr, size = allocateSize)
+            newMemoryBlock.occupy()
             // 重新修改被分割的内存块的大小和地址
             allocateMemoryBlock.size -= allocateSize
             allocateMemoryBlock.addr = newMemoryBlock.addr + newMemoryBlock.size
@@ -504,30 +493,75 @@ class MainViewModel {
      * @param index 要释放的内存块的索引
      */
     fun deallocateMemory(index: Int, memoryBlock: MemoryBlock) {
+        // 先释放当前内存块
         memoryBlock.unOccupy()
+        when (index) {
+            0 -> {
+                // 当前块是第一个内存块，合并下一个内存块
+                mergeBlock(index, 1)
+            }
+            _algorithm.value.getMemory().lastIndex -> {
+                // 当前块是最后一个块，合并上一个内存块
+                mergeBlock(index - 1, index)
+            }
+            else -> {
+                // 当前块是中间块，合并上下块
+                // 合并上
+                if (mergeBlock(index - 1, index)) {
+                    // 上合并成功
+                    // 合并下
+                    mergeBlock(index - 1, index)
+                } else {
+                    // 上合并失败
+                    // 合并下
+                    mergeBlock(index, index + 1)
+                }
+            }
+        }
+    }
+
+    /**
+     * 合并内存块
+     * @param currentIndex 当前块索引
+     * @param mergeIndex 要合并的快索引
+     * @return 是否合并成功
+     */
+    private fun mergeBlock(currentIndex: Int, mergeIndex: Int): Boolean {
+        val currentBlock = _algorithm.value.memoryAt(currentIndex)
+        val mergeBlock = _algorithm.value.memoryAt(mergeIndex)
+
+        if (currentBlock == null || mergeBlock == null) {
+            return false
+        }
+
+        // 如果两个块有一个被占用，取消合并
+        if (currentBlock.isOccupied() || mergeBlock.isOccupied()) {
+            return false
+        }
+
+        if (!mergeBlock.isOccupied()) {
+            // 要合并的块如果没有被占用，就合并当前块
+            currentBlock.size += mergeBlock.size
+
+            // 删除被合并的块
+            _algorithm.value.delMemory(mergeIndex)
+            return true
+        }
+
+        return false
     }
 
     /**
      * 紧凑算法
      */
-    fun compaction(compactionOption: CompactionOption) {
+    fun compaction() {
         isLoading.value = true
-        coroutineScope.launch {
-            var count = 1
-            while (_algorithm.value.canCompaction(compactionOption)) {
-                addLog(
-                    MyLog(
-                        "第 $count 次" +
-                                (if (compactionOption == CompactionOption.START) "上" else "下") + "紧凑"
-                    )
-                )
-                count++
-                _algorithm.value.compaction(compactionOption)
-                delay(30)
-            }
-            addLog(MyLog("紧凑完成", Color.Green))
-            isLoading.value = false
+        // 是否还可以紧凑
+        if (_algorithm.value.canCompaction()) {
+            _algorithm.value.compaction()
         }
+        addLog(MyLog("紧凑完成", Color.Green))
+        isLoading.value = false
     }
 
     /**

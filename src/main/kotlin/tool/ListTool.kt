@@ -15,7 +15,7 @@ fun <T> List<T>.checkStartWith(
         return false
     }
     // 从给定索引开始遍历
-    for (i in startIndex .. lastIndex) {
+    for (i in startIndex..lastIndex) {
         // 如果有一个不满足条件就直接返回 false
         if (!condition(this[i])) {
             return false

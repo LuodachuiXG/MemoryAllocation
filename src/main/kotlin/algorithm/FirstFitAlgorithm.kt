@@ -1,6 +1,5 @@
 package algorithm
 
-import algorithm.CompactionOption.*
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import data.model.IndexWithData
@@ -80,114 +79,65 @@ open class FirstFitAlgorithm(
 
     /**
      * 紧凑内存块
-     * @param compaction 紧凑选项 [CompactionOption]
      */
-    override fun compaction(compaction: CompactionOption) {
-//        when (compaction) {
-//            // 向前紧凑
-//            START -> {
-//                for (index in 0 until memory.size - 1) {
-//                    val memoryBlock = memory[index]
-//                    // 当前块剩余空间
-//                    val currentBlockRemain = memoryBlock.size.value - memoryBlock.used.value
-//
-//                    // 下一个块
-//                    val nextBlock = memory[index + 1]
-//                    if (currentBlockRemain >= nextBlock.used.value) {
-//                        // 当前块的剩余空间大于等于下一个块的已用空间
-//                        // 直接将下一个块的已用空间转移到当前块
-//                        memoryBlock.used.value += nextBlock.used.value
-//                        nextBlock.used.value = 0
-//                    } else {
-//                        // 当前块的剩余空间小于下一个块的已用空间
-//                        // 转移下一个块的部分已用空间，填满当前块的所有空间
-//                        memoryBlock.used.value += currentBlockRemain
-//                        nextBlock.used.value -= currentBlockRemain
-//                    }
-//                }
-//            }
-//            // 向后紧凑
-//            END -> {
-//                // 从后往前遍历
-//                for (index in memory.lastIndex downTo 1) {
-//                    val memoryBlock = memory[index]
-//                    // 当前块剩余空间
-//                    val currentBlockRemain = memoryBlock.size.value - memoryBlock.used.value
-//
-//                    // 上一个块
-//                    val preBlock = memory[index - 1]
-//                    if (currentBlockRemain >= preBlock.used.value) {
-//                        // 当前块的剩余空间大于等于上一个块的已用空间
-//                        // 直接将上一个块的已用空间转移到当前块
-//                        memoryBlock.used.value += preBlock.used.value
-//                        preBlock.used.value = 0
-//                    } else {
-//                        // 当前块的剩余空间小于上一个块的已用空间
-//                        // 转移上一个块的部分已用空间，填满当前块的所有空间
-//                        memoryBlock.used.value += currentBlockRemain
-//                        preBlock.used.value -= currentBlockRemain
-//                    }
-//                }
-//            }
-//        }
+    override fun compaction() {
+        // 已占用的块总大小
+        var totalSize = 0
+        memory.forEach {
+            if (it.isOccupied()) {
+                totalSize += it.size
+                // 同时取消每个块的占用状态
+                it.unOccupy()
+            }
+        }
+
+        var currentIndex = 0
+        var currentBlock = memory[currentIndex]
+        while (totalSize - currentBlock.size > 0) {
+            totalSize -= currentBlock.size
+            currentBlock.occupy()
+            currentBlock = memory[++currentIndex]
+        }
+
+        if (totalSize > 0) {
+            // 当前剩余未分配大小填不满当前块
+            // 需要分割当前块
+            val newMemoryBlock = MemoryBlock(addr = currentBlock.addr, size = totalSize)
+            newMemoryBlock.occupy()
+            // 重新修改被分割的内存块的大小和地址
+            currentBlock.size -= totalSize
+            currentBlock.addr = newMemoryBlock.addr + newMemoryBlock.size
+
+            // 插入分割出来的内存块，插入到被分割的内存块前
+            memory.add(currentIndex, newMemoryBlock)
+        }
     }
 
     /**
      * 判断当前内存款是否还可以进行紧凑操作
-     * @param compaction 紧凑选项，向前 / 向后紧凑 [CompactionOption]
      */
-    override fun canCompaction(compaction: CompactionOption): Boolean {
-//        when (compaction) {
-//            // 向前紧凑
-//            START -> {
-//                var index = 0
-//                var block = memory[index]
-//                // 从上往下找到第一个不满的内存块
-//                while (block.isFull()) {
-//                    index++
-//                    block = memory[index]
-//                }
-//
-//                if (index == memory.lastIndex) {
-//                    // 第一个不满的内存块是最后一个，无法紧凑
-//                    return false
-//                }
-//
-//                // 判断从上往下第一个不为空的内存块下方是否还有非空内存块
-//                return if (memory.checkStartWith(index + 1) { !it.isOccupied() }) {
-//                    // 下方已经没有不为空的内存块了，无法紧凑
-//                    false
-//                } else {
-//                    // 下方依旧还有不为空的内存块，可以紧凑
-//                    true
-//                }
-//            }
-//            // 向后紧凑
-//            END -> {
-//                var index = memory.lastIndex
-//                var block = memory[index]
-//                // 从下往上找到第一个不满的内存块
-//                while (block.isFull()) {
-//                    index--
-//                    block = memory[index]
-//                }
-//
-//                if (index == 0) {
-//                    // 第一个不满的内存块是第一个，无法紧凑
-//                    return false
-//                }
-//
-//                // 判断从下往上第一个不为空的内存块上方是否还有非空内存块
-//                return if (memory.checkDownWith(index - 1) { !it.isOccupied() }) {
-//                    // 上方已经没有不为空的内存块了，无法紧凑
-//                    false
-//                } else {
-//                    // 上方依旧还有不为空的内存块，可以紧凑
-//                    true
-//                }
-//            }
-//        }
-        return false
+    override fun canCompaction(): Boolean {
+        var index = 0
+        var block = memory[index]
+        // 从上往下找到第一个未被占用的块
+        while (block.isOccupied() && index != memory.lastIndex) {
+            index++
+            block = memory[index]
+        }
+
+        if (index == memory.lastIndex) {
+            // 第一个不满的内存块是最后一个，无法紧凑
+            return false
+        }
+
+        // 判断从上往下第一个未被占用的内存块下方是否还有未被占用的内存块
+        return if (memory.checkStartWith(index + 1) { !it.isOccupied() }) {
+            // 下方已经没有未被占用的内存块了，无法紧凑
+            false
+        } else {
+            // 下方依旧还有未被占用的内存块，可以紧凑
+            true
+        }
     }
 
     /**
